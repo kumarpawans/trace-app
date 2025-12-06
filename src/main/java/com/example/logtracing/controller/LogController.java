@@ -7,6 +7,8 @@ import com.example.logtracing.entity.Trace;
 import com.example.logtracing.entity.Span;
 import com.example.logtracing.repository.TraceRepository;
 import com.example.logtracing.repository.SpanRepository;
+import com.example.logtracing.service.TelemetryProducerService;
+import com.example.logtracing.dto.TelemetryPayload;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +24,9 @@ public class LogController {
     private TraceRepository traceRepository;
     @Autowired
     private SpanRepository spanRepository;
+    @Autowired
+    private TelemetryProducerService telemetryProducerService;
+
     @PostMapping("/trace-span")
     public ResponseEntity<String> receiveTraceSpan(@RequestBody LogPayload payload) {
         // Find or create Trace
@@ -53,6 +58,24 @@ public class LogController {
         public String status; // "error" or "success"
         public String details;
         public Long timestamp; // epoch millis
+    }
+
+    @PostMapping("/publish-to-kafka")
+    public ResponseEntity<String> publishToKafka(@RequestBody LogPayload payload) {
+        try {
+            TelemetryPayload telemetryPayload = new TelemetryPayload(
+                payload.traceId,
+                payload.spanId,
+                payload.parentSpanId,
+                payload.status,
+                payload.details,
+                payload.timestamp
+            );
+            telemetryProducerService.sendTelemetryData(telemetryPayload);
+            return ResponseEntity.ok("Message sent to Kafka topic: app-telemetry-log");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to send message to Kafka: " + e.getMessage());
+        }
     }
 
     @PostMapping("/spans-by-trace")

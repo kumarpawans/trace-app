@@ -1,0 +1,14 @@
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/LogTracingApplication.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/config/WebConfig.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/config/KafkaProducerConfig.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/controller/TraceController.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/repository/SpanRepository.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/entity/Trace.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/consumer/TelemetryKafkaConsumer.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/entity/Span.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/controller/LogController.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/dto/TelemetryPayload.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/config/KafkaConsumerConfig.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/service/TelemetryProducerService.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/controller/SpanController.java
+/Users/mac/devops/trace-app/src/main/java/com/example/logtracing/repository/TraceRepository.java
