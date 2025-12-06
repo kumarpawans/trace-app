@@ -42,6 +42,17 @@
         <artifactId>spring-kafka</artifactId>
         <version>3.3.7</version>
     </dependency>
+    <!-- MessagePack for message compression -->
+    <dependency>
+        <groupId>org.msgpack</groupId>
+        <artifactId>msgpack-core</artifactId>
+        <version>0.9.8</version>
+    </dependency>
+    <dependency>
+        <groupId>org.msgpack</groupId>
+        <artifactId>jackson-dataformat-msgpack</artifactId>
+        <version>0.9.8</version>
+    </dependency>
     </dependencies>
     <build>
         <plugins>
