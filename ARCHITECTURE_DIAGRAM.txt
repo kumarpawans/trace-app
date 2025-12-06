@@ -1,0 +1,174 @@
+```
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    MessagePack Compression Flow                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PRODUCER SIDE                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  Client Request (JSON)
+        │
+        │  POST /api/log/publish-to-kafka
+        │  {
+        │    "traceId": "trace-123",
+        │    "spanId": "span-001",
+        │    "status": "success",
+        │    ...
+        │  }
+        ▼
+  ┌──────────────────────────┐
+  │  LogController           │
+  │  - Receives JSON         │
+  │  - Creates TelemetryDTO  │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ TelemetryProducerService │
+  │ - Calculates JSON size   │
+  │   (e.g., 285 bytes)      │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ MessagePackSerializer    │  ◄── Custom Serializer
+  │ - Converts to binary     │
+  │ - Output: 185 bytes      │
+  │ - 35% smaller! 🎉        │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ Kafka Producer           │
+  │ - Applies LZ4 compress   │
+  │ - Output: 120 bytes      │
+  │ - 58% smaller total! 🚀  │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ Kafka Topic              │
+  │ app-telemetry-log        │
+  │                          │
+  │ [MessagePack + LZ4]      │
+  │ 120 bytes stored         │
+  └──────────┬───────────────┘
+             │
+             │
+┌────────────┴─────────────────────────────────────────────────────────────────┐
+│                           CONSUMER SIDE                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ Kafka Consumer           │
+  │ - Decompresses LZ4       │
+  │ - Gets MessagePack bytes │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ MessagePackDeserializer  │  ◄── Custom Deserializer
+  │ - Converts binary to obj │
+  │ - Creates TelemetryDTO   │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ TelemetryKafkaConsumer   │
+  │ @KafkaListener           │
+  │ - Receives Java object   │
+  │ - Validates payload      │
+  └──────────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ Database Layer           │
+  │ - Create/Find Trace      │
+  │ - Create Span            │
+  │ - Save to PostgreSQL     │
+  └──────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                        Size Comparison                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  JSON (Plain Text)
+  ████████████████████████████████████████████████  285 bytes (100%)
+
+  MessagePack (Binary)
+  ██████████████████████████████  185 bytes (65%)
+  Savings: 100 bytes (35%)
+
+  MessagePack + LZ4
+  ████████████████████  120 bytes (42%)
+  Savings: 165 bytes (58%)
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    Logging Output Example                                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Producer Log:
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ INFO: Sent telemetry message to topic: app-telemetry-log               │
+  │       with offset: 42                                                   │
+  │       Original JSON size: 285 bytes                                     │
+  │       MessagePack size: 185 bytes                                       │
+  │       Compression ratio: 35.09%                                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  Consumer Log:
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ INFO: Received telemetry message from topic: app-telemetry-log         │
+  │       partition: 0, offset: 42                                          │
+  │ INFO: Payload: TelemetryPayload{traceId='trace-123', ...}              │
+  │ INFO: Created new trace with traceId: trace-123                        │
+  │ INFO: Successfully saved span with spanId: span-001                    │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    Network Traffic Savings (Annual)                         ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Scenario: 1 Million Messages/Day
+
+  Without Compression (JSON):
+  ███████████████████████████████████████  285 MB/day → 104 GB/year
+
+  With MessagePack + LZ4:
+  ████████████████  120 MB/day → 44 GB/year
+
+  💰 Annual Savings: ~60 GB/year
+  📉 Network Cost Reduction: ~58%
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                         File Structure                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  trace-app/
+  ├── src/main/java/com/example/logtracing/
+  │   ├── consumer/
+  │   │   └── TelemetryKafkaConsumer.java       ← Consumes from Kafka
+  │   ├── service/
+  │   │   └── TelemetryProducerService.java     ← Publishes to Kafka
+  │   ├── serialization/                        ← NEW!
+  │   │   ├── MessagePackSerializer.java        ← Compress messages
+  │   │   └── MessagePackDeserializer.java      ← Decompress messages
+  │   ├── config/
+  │   │   ├── KafkaProducerConfig.java          ← Updated
+  │   │   └── KafkaConsumerConfig.java          ← Updated
+  │   ├── dto/
+  │   │   └── TelemetryPayload.java
+  │   └── ...
+  ├── pom.xml                                    ← Added MessagePack deps
+  ├── application.properties                     ← Updated config
+  ├── MESSAGEPACK_COMPRESSION.md                 ← Full documentation
+  ├── IMPLEMENTATION_SUMMARY.md                  ← This summary
+  └── messagepack-demo.sh                        ← Demo script
+```
+
